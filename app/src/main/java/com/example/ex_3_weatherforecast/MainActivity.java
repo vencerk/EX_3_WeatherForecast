@@ -3,6 +3,13 @@ package com.example.ex_3_weatherforecast;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import okhttp3.Call;
+
+
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
@@ -27,6 +34,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -48,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         sendRequest.setOnClickListener(this);
     }
 
+
     @Override
     public void onClick(View v){
         if(v.getId()==R.id.send_request){
@@ -56,74 +67,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void sendRequestWithHttpURLConnection() {
-        //发送网络请求
+    private void sendRequestWithHttpURLConnection(){
         new Thread(new Runnable() {
             @Override
             public void run() {
-                HttpURLConnection conn = null;
-                BufferedReader reader = null;
+                OkHttpClient client = new OkHttpClient();
+                Request request = new Request.Builder().url("http://www.weather.com.cn/data/cityinfo/101070801.html").build();
+                Response response=null;
                 try {
-                    //设定url
-                    URL url = null;
-
-                    try {
-                        url = new URL("http://www.baidu.com");
-                    } catch (MalformedURLException e) {
-                        e.printStackTrace();
-                    }
-
-                    try {
-                        conn = (HttpURLConnection) url.openConnection();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    //获取数据GET
-                    try {
-                        conn.setRequestMethod("GET");
-                    } catch (ProtocolException e) {
-                        e.printStackTrace();
-                    }
-                    //设定连接超时，读取超时
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    //输入流
-                    InputStream in = null;
-                    try {
-                        in = conn.getInputStream();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    //读取输入流
-
-                    reader = new BufferedReader(new InputStreamReader(in));
-                    StringBuffer response = new StringBuffer();
-                    String line;
-
-                    while ((line=reader.readLine())!=null){
-                        response.append(line);
-                    }
-                    showResponse(response.toString());
-                } catch (Exception e) {
+                     response= client.newCall(request).execute();
+                } catch (IOException e) {
                     e.printStackTrace();
-                } finally {
-                    if (reader != null) {
+                }
+                String responseData=null;
+                try {
+                    responseData = response.body().string();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                parseJSONWithJSONObject(responseData);
+                //showResponse(responseData);
 
-                        try {
-                            reader.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-                if (conn != null) {
-                    conn.disconnect();
-                }
             }
+
         }).start();
     }
+private void parseJSONWithJSONObject(String jsonData){
+        try{
 
-
+            JSONObject jsonObject1 = new JSONObject(jsonData);
+            String weatherinfo=jsonObject1.getString("weatherinfo");
+            int n =1;
+            JSONArray jsonArray = new JSONArray("["+weatherinfo+"]");
+            n++;
+            for(int i = 0;i<jsonArray.length();i++){
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                String id = jsonObject.getString("city");
+                String temp1 = jsonObject.getString("temp1");
+                String temp2 = jsonObject.getString("temp2");
+                String weather = jsonObject.getString("weather");
+                String ptime = jsonObject.getString("ptime");
+                showResponse(id+temp1+temp2+weather+ptime);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+}
     private void showResponse(final String response){
         runOnUiThread(new Runnable() {
             @Override
@@ -133,4 +122,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
     }
+
 }
